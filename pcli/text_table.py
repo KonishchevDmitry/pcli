@@ -26,12 +26,6 @@ class Table:
         self.rows.extend(rows)
 
 
-    def rows(self):
-        """Returns all table rows."""
-
-        return self.rows
-
-
     def draw(self, title=None, stream=None, spacing=3):
         """Prints the table contents."""
 
