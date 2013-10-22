@@ -1,65 +1,91 @@
-"""Provides a class for displaying table data in the text form."""
+"""Provides a class for displaying table data in text form."""
 
-import copy
 import functools
 import sys
 
+from collections import namedtuple
 
-class TextTable:
-    """Can be filled up with data and draw it on a text stream."""
 
-    __rows = None
-    """Table row data."""
+class Table:
+    """Displays table data in text form."""
 
-    def __init__(self):
-        self.__rows = []
+    def __init__(self, columns):
+        self.columns = columns
+        self.rows = []
 
 
     def add_row(self, row):
         """Adds a row to the table."""
 
-        self.__rows.append(row)
+        self.rows.append(row)
 
 
-    def draw(self, headers, stream = sys.stdout, spacing = 3):
-        """Prints out the table contents."""
+    def add_rows(self, rows):
+        """Adds rows to the table."""
 
-        headers = copy.deepcopy(headers)
-        rows = copy.deepcopy(self.__rows)
-        row_lines = [ 1 ] * len(rows)
+        self.rows.extend(rows)
+
+
+    def rows(self):
+        """Returns all table rows."""
+
+        return self.rows
+
+
+    def draw(self, title=None, stream=None, spacing=3):
+        """Prints the table contents."""
+
+        ColumnTraits = namedtuple("ColumnTraits", ("width", "hide"))
+
+        columns_traits = []
+        rows = [ {} for i in range(len(self.rows)) ]
+
+        if stream is None:
+            stream = sys.stdout
+
+        if title is not None:
+            stream.write(title + "\n\n")
 
         first_visible = True
-        for header in headers:
-            max_len = 0
-            for row_id, row in enumerate(rows):
-                cell = str(row[header["id"]]) if header["id"] in row else ""
-                cell_lines = self.__get_cell_lines(cell, max_width = header.get("max_width"))
-                row[header["id"]] = cell_lines
+        for column_id, column in enumerate(self.columns):
+            width = 0
 
-                row_lines[row_id] = max(row_lines[row_id], len(cell_lines))
-                max_len = functools.reduce(
+            for row_id, row in enumerate(self.rows):
+                cell = str(row[column.id]) if column.id in row else ""
+                cell_lines = self.__get_cell_lines(cell, max_width=column.max_width)
+                rows[row_id][column.id] = cell_lines
+
+                width = functools.reduce(
                     lambda max_len, line: max(max_len, len(line)),
-                    cell_lines, max_len)
+                    cell_lines, width)
 
-            header["hide"] = ( header.get("hide_if_empty", False) and max_len == 0 )
-            header["max_len"] = max(max_len, len(header.get("name") or ""))
+            hide = (column.hide_if_empty and width == 0)
+            width = max(width, len(column.name))
 
-            if header["hide"]:
-                continue
+            columns_traits.append(ColumnTraits(width, hide))
 
-            if first_visible:
-                first_visible = False
-            else:
-                stream.write(" " * spacing)
-            stream.write(header["name"].center(header["max_len"]))
+            if not hide:
+                if first_visible:
+                    first_visible = False
+                else:
+                    stream.write(" " * spacing)
+
+                stream.write(column.name.center(width))
 
         stream.write("\n\n")
 
         for row_id, row in enumerate(rows):
-            for line_id in range(0, row_lines[row_id]):
+            row_lines = 0
+            for column_id, column in enumerate(self.columns):
+                if not columns_traits[column_id].hide:
+                    row_lines = max(row_lines, len(rows[row_id][column.id]))
+
+            for line_id in range(row_lines):
                 first_visible = True
-                for header in headers:
-                    if header["hide"]:
+
+                for column_id, column in enumerate(self.columns):
+                    column_traits = columns_traits[column_id]
+                    if column_traits.hide:
                         continue
 
                     if first_visible:
@@ -67,23 +93,23 @@ class TextTable:
                     else:
                         stream.write(" " * spacing)
 
-                    cell_lines = row[header["id"]]
+                    cell_lines = row[column.id]
                     cell_line = cell_lines[line_id] if line_id < len(cell_lines) else ""
 
-                    align = header.get("align", "right")
-                    if align == "left":
-                        cell_line = cell_line.ljust(header["max_len"])
-                    elif align == "center":
-                        cell_line = cell_line.center(header["max_len"])
+                    if column.align == Column.ALIGN_LEFT:
+                        cell_line = cell_line.ljust(column_traits.width)
+                    elif column.align == Column.ALIGN_CENTER:
+                        cell_line = cell_line.center(column_traits.width)
                     else:
-                        cell_line = cell_line.rjust(header["max_len"])
+                        cell_line = cell_line.rjust(column_traits.width)
 
                     stream.write(cell_line)
+
                 stream.write("\n")
 
 
-    def __get_cell_lines(self, cell, max_width = None):
-        """Formats a cell according to header requirements."""
+    def __get_cell_lines(self, cell, max_width=None):
+        """Formats a cell according to column requirements."""
 
         lines = []
 
@@ -105,3 +131,19 @@ class TextTable:
             lines.append(line)
 
         return lines
+
+
+
+class Column:
+    """Describes a table column."""
+
+    ALIGN_LEFT = "left"
+    ALIGN_CENTER = "center"
+    ALIGN_RIGHT = "right"
+
+    def __init__(self, id, name, align=ALIGN_RIGHT, max_width=None, hide_if_empty=False):
+        self.id = id
+        self.name = name
+        self.align = align
+        self.max_width = max_width
+        self.hide_if_empty = hide_if_empty
