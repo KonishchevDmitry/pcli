@@ -1,5 +1,9 @@
 """Provides a class for displaying table data in text form."""
 
+from __future__ import unicode_literals
+
+from six import text_type as str
+
 import functools
 import sys
 
