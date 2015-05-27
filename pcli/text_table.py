@@ -30,7 +30,7 @@ class Table:
         self.rows.extend(rows)
 
 
-    def draw(self, title=None, stream=None, spacing=3):
+    def draw(self, title=None, stream=None, spacing=3, placeholder=""):
         """Prints the table contents."""
 
         ColumnTraits = namedtuple("ColumnTraits", ("width", "hide"))
@@ -49,7 +49,7 @@ class Table:
             width = 0
 
             for row_id, row in enumerate(self.rows):
-                cell = str(row[column.id]) if column.id in row else ""
+                cell = str(row[column.id]) if column.id in row else placeholder
                 cell_lines = self.__get_cell_lines(cell, max_width=column.max_width)
                 rows[row_id][column.id] = cell_lines
 
