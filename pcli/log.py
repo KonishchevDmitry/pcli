@@ -18,6 +18,7 @@ class _OutputHandler(logging.Handler):
         try:
             stream = sys.stdout if record.levelno <= logging.INFO else sys.stderr
             print(self.format(record), file=stream)
+            stream.flush()
         except:
             self.handleError(record)
         finally:

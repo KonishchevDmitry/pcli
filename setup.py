@@ -6,7 +6,7 @@ if __name__ == "__main__":
     with open("README") as readme:
         setup(
             name = "pcli",
-            version = "0.2.2",
+            version = "0.2.3",
 
             description = readme.readline().strip(),
             long_description = readme.read().strip() or None,
